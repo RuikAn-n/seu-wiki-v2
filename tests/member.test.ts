@@ -158,23 +158,23 @@ async function loginFlow(returnPath: string): Promise<Jar> {
   return Object.assign(jar, { lastStatus: r3.statusCode, lastBody: r3.body });
 }
 
-test("subscription login returns to subscription and unlocks its API", async () => {
+test("subscription login opens required onboarding and unlocks its API", async () => {
   let jar=await pendingFlow("/subscription");
   const complete=await app_.inject({method:"GET",url:"/api/logto/bootstrap-complete",headers:{cookie:cookieHeader(jar)}});
   assert.equal(complete.statusCode,302);
-  assert.equal(complete.headers.location,"/subscription");
+  assert.equal(complete.headers.location,"/welcome");
   jar=merge(jar,jarOf(complete.headers["set-cookie"]));
   const taxonomy=await app_.inject({method:"GET",url:"/api/site/subscription-taxonomy",headers:{cookie:cookieHeader(jar)}});
   assert.equal(taxonomy.statusCode,200);
   assert.equal(taxonomy.headers["cache-control"],"private, no-store");
 });
 
-test("global login return preserves search query and article path", async () => {
+test("public login opens onboarding before the subscription feed", async () => {
   for (const target of ["/all?q=%E4%BF%9D%E7%A0%94&page=2", "/items/example-article"]) {
     const jar = await pendingFlow(target);
     const complete = await app_.inject({ method: "GET", url: "/api/logto/bootstrap-complete", headers: { cookie: cookieHeader(jar) } });
     assert.equal(complete.statusCode, 302);
-    assert.equal(complete.headers.location, target);
+    assert.equal(complete.headers.location, "/welcome");
   }
 });
 
@@ -210,7 +210,7 @@ test("unfinished Accounts bootstrap preserves pending and return cookies for ret
     assert.equal(result.headers["set-cookie"], undefined);
   } finally { accountsReady = true; }
   const retried = await app_.inject({ method: "GET", url: "/api/logto/bootstrap-complete", headers: { cookie: cookieHeader(jar) } });
-  assert.equal(retried.headers.location, "/for-you");
+  assert.equal(retried.headers.location, "/welcome");
   assert.ok(jarOf(retried.headers["set-cookie"]).get("seuwiki_member"));
 });
 
@@ -336,7 +336,7 @@ test("订阅画像：账号隔离、严格校验、乐观锁、清除与试验�
   const saved = await app_.inject({ method: "PUT", url: "/api/member/subscription-profile", headers: { cookie, origin: "http://localhost", "x-csrf-token": csrf }, payload: { profile, revision: 0 } });
   assert.equal(saved.statusCode, 200);
   assert.equal(saved.json().revision, 1);
-  assert.equal(saved.json().taxonomyVersion, "2026-10-25-v2");
+  assert.equal(saved.json().taxonomyVersion, "2026-11-09-v3");
   const stale = await app_.inject({ method: "PUT", url: "/api/member/subscription-profile", headers: { cookie, origin: "http://localhost", "x-csrf-token": csrf }, payload: { profile, revision: 0 } });
   assert.equal(stale.statusCode, 409);
 
